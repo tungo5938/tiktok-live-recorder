@@ -1,5 +1,7 @@
 # TikTok Live Auto Recorder
 
+📖 **Hướng dẫn cài đặt & sử dụng chi tiết: [HUONG_DAN.md](HUONG_DAN.md)**
+
 Nhập kênh TikTok → hệ thống tự theo dõi và **tự động record livestream** ngay khi kênh bắt đầu live. Hết live tự lưu file `.mp4`.
 
 - Giao diện web: thêm / tạm dừng / xoá kênh, xem trạng thái LIVE & đang record, xem và tải video.
