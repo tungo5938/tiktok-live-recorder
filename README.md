@@ -49,7 +49,7 @@ node src/cli.js check <username>
 1. Mỗi `CHECK_INTERVAL_SEC` giây, gọi `tiktok.com/api-live/user/room` cho từng kênh → biết kênh có live không (`status = 2`) và lấy link stream FLV/HLS.
 2. Khi live: chạy `ffmpeg -c copy` kéo stream từ CDN TikTok về đĩa.
 3. Stream kết thúc → ffmpeg thoát → remux sang `.mp4` → 5 giây sau kiểm tra lại (nếu stream chỉ bị rớt mà kênh vẫn live thì record tiếp sang file mới).
-4. Bấm **Dừng record** thủ công: bỏ qua phiên live hiện tại, phiên live sau vẫn tự record.
+4. Bấm **Dừng record** thủ công: bỏ qua phiên live hiện tại, phiên live sau vẫn tự record. Muốn record lại ngay phiên đó thì bấm **Record tiếp**.
 
 ## API
 
@@ -61,6 +61,7 @@ node src/cli.js check <username>
 | DELETE | `/api/channels/:u` | Bỏ theo dõi |
 | POST | `/api/channels/:u/check` | Kiểm tra ngay |
 | POST | `/api/channels/:u/stop` | Dừng record phiên hiện tại |
+| POST | `/api/channels/:u/resume` | Record tiếp phiên live đã bấm dừng |
 | GET | `/api/recordings` | Danh sách video |
 | DELETE | `/api/recordings?path=user/file.mp4` | Xoá video |
 | GET | `/files/:user/:file` | Xem / tải (`?download`) |

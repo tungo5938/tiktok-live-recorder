@@ -105,6 +105,7 @@ function channelRow(c) {
     </div>
     <div class="actions">
       ${c.recording ? `<button onclick="act('POST','/api/channels/${u}/stop')">Dừng record</button>` : ''}
+      ${c.enabled && c.live && !c.recording && c.skipRoomId ? `<button onclick="act('POST','/api/channels/${u}/resume')">Record tiếp</button>` : ''}
       <button onclick="act('POST','/api/channels/${u}/check')">Kiểm tra</button>
       <button onclick="act('PATCH','/api/channels/${u}',{enabled:${!c.enabled}})">${c.enabled ? 'Tạm dừng' : 'Bật lại'}</button>
       <button onclick="confirm('Bỏ theo dõi @${esc(c.username)}?') && act('DELETE','/api/channels/${u}')">Xoá</button>

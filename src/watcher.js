@@ -84,6 +84,14 @@ export class Watcher extends EventEmitter {
     rec.stop();
   }
 
+  /** Undo a manual stop: allow recording the current live session again. */
+  resume(username) {
+    const c = this.channels.get(username);
+    if (!c) return null;
+    c.skipRoomId = null;
+    return this.check(username);
+  }
+
   async checkAll() {
     for (const c of this.channels.values()) {
       if (!c.enabled) continue;

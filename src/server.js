@@ -89,6 +89,7 @@ const server = http.createServer(async (req, res) => {
           return send(res, 200, watcher.setEnabled(u, !!enabled));
         }
         if (req.method === 'POST' && parts[3] === 'check') { await watcher.check(u); return send(res, 200, watcher.channels.get(u)); }
+        if (req.method === 'POST' && parts[3] === 'resume') { await watcher.resume(u); return send(res, 200, watcher.channels.get(u)); }
         if (req.method === 'POST' && parts[3] === 'stop') { watcher.stopRecording(u); return send(res, 200, { ok: true }); }
       }
       if (parts[1] === 'recordings' && req.method === 'GET') return send(res, 200, listRecordings());
