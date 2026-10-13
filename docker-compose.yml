@@ -1,0 +1,13 @@
+services:
+  recorder:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - CHECK_INTERVAL_SEC=60
+      - QUALITY=origin
+      # - TIKTOK_COOKIE=sessionid=xxxx
+    volumes:
+      - ./data:/data
+      - ./recordings:/recordings

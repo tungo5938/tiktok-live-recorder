@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TikTok Live Recorder</title>
+<style>
+  :root {
+    --bg: #f6f6f7; --card: #fff; --text: #16161a; --muted: #6b6b76; --line: #e6e6ea;
+    --accent: #fe2c55; --ok: #16a34a; --warn: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f0f12; --card: #18181d; --text: #ececf1; --muted: #9696a3; --line: #2a2a31; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 32px 0 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); font-size: 15px; }
+  button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); cursor: pointer; font-size: 13px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; font-size: 15px; padding: 10px 18px; }
+  button:hover { filter: brightness(.96); }
+  .err { color: var(--accent); min-height: 20px; margin-top: 6px; }
+  .list { display: grid; gap: 8px; }
+  .row { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .row img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--line); flex: none; }
+  .info { flex: 1; min-width: 0; }
+  .name { font-weight: 600; }
+  .meta { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 1px; }
+  .b-rec { background: var(--accent); color: #fff; animation: pulse 1.4s infinite; }
+  .b-live { background: var(--ok); color: #fff; }
+  .b-off { background: var(--line); color: var(--muted); }
+  .b-paused { background: var(--warn); color: #fff; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .empty { color: var(--muted); padding: 16px; text-align: center; border: 1px dashed var(--line); border-radius: 10px; }
+  a { color: inherit; }
+  video { width: 100%; max-height: 70vh; background: #000; border-radius: 10px; margin-top: 10px; }
+  @media (max-width: 600px) { .row { flex-wrap: wrap; } .actions { width: 100%; justify-content: flex-start; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>TikTok Live Recorder</h1>
+  <p class="sub">Nhập kênh TikTok, hệ thống sẽ tự động record khi kênh bắt đầu live.</p>
+
+  <form id="add">
+    <input id="username" placeholder="@username hoặc link https://www.tiktok.com/@username" autocomplete="off" required>
+    <button class="primary">Theo dõi</button>
+  </form>
+  <div class="err" id="err"></div>
+
+  <h2>Kênh đang theo dõi</h2>
+  <div class="list" id="channels"></div>
+
+  <h2>Video đã record</h2>
+  <div id="player"></div>
+  <div class="list" id="recordings"></div>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const api = async (method, url, body) => {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+};
+const fmtBytes = (b) => b > 1e9 ? (b / 1e9).toFixed(2) + ' GB' : (b / 1e6).toFixed(1) + ' MB';
+const fmtDur = (s) => { s = Math.max(0, s | 0); const h = s / 3600 | 0, m = (s % 3600) / 60 | 0; return (h ? h + 'h ' : '') + m + 'm ' + (s % 60) + 's'; };
+const ago = (t) => t ? fmtDur((Date.now() - t) / 1000) + ' trước' : 'chưa kiểm tra';
+
+$('#add').onsubmit = async (e) => {
+  e.preventDefault();
+  $('#err').textContent = '';
+  try {
+    await api('POST', '/api/channels', { username: $('#username').value });
+    $('#username').value = '';
+    refresh();
+    setTimeout(refresh, 3000);
+  } catch (err) { $('#err').textContent = err.message; }
+};
+
+async function act(method, url, body) {
+  try { await api(method, url, body); } catch (err) { alert(err.message); }
+  refresh();
+}
+
+function channelRow(c) {
+  const u = encodeURIComponent(c.username);
+  let badge = c.enabled ? (c.recording ? '<span class="badge b-rec">● ĐANG RECORD</span>' : c.live ? (c.skipRoomId ? '<span class="badge b-live">LIVE · đã dừng record</span>' : '<span class="badge b-live">LIVE</span>') : '<span class="badge b-off">offline</span>') : '<span class="badge b-paused">tạm dừng</span>';
+  let meta = c.recording
+    ? `${fmtDur(c.recording.durationSec)} · ${fmtBytes(c.recording.bytes)}${c.title ? ' · ' + esc(c.title) : ''}${c.viewers != null ? ' · ' + c.viewers + ' người xem' : ''}`
+    : c.error ? `<span style="color:var(--accent)">${esc(c.error)}</span>` : `Kiểm tra: ${ago(c.lastCheck)}`;
+  return `<div class="row">
+    <img src="${esc(c.avatar)}" alt="" onerror="this.style.visibility='hidden'">
+    <div class="info">
+      <div class="name"><a href="https://www.tiktok.com/@${esc(c.username)}/live" target="_blank" rel="noopener">${esc(c.nickname || c.username)}</a> <span class="meta">@${esc(c.username)}</span>${badge}</div>
+      <div class="meta">${meta}</div>
+    </div>
+    <div class="actions">
+      ${c.recording ? `<button onclick="act('POST','/api/channels/${u}/stop')">Dừng record</button>` : ''}
+      <button onclick="act('POST','/api/channels/${u}/check')">Kiểm tra</button>
+      <button onclick="act('PATCH','/api/channels/${u}',{enabled:${!c.enabled}})">${c.enabled ? 'Tạm dừng' : 'Bật lại'}</button>
+      <button onclick="confirm('Bỏ theo dõi @${esc(c.username)}?') && act('DELETE','/api/channels/${u}')">Xoá</button>
+    </div>
+  </div>`;
+}
+
+function recRow(r) {
+  const href = '/files/' + r.path.split('/').map(encodeURIComponent).join('/');
+  return `<div class="row">
+    <div class="info">
+      <div class="name">${esc(r.name)}</div>
+      <div class="meta">@${esc(r.username)} · ${fmtBytes(r.bytes)} · ${new Date(r.mtime).toLocaleString('vi-VN')}</div>
+    </div>
+    <div class="actions">
+      ${r.name.endsWith('.mp4') ? `<button onclick="play('${esc(href)}')">Xem</button>` : ''}
+      <a href="${esc(href)}?download"><button>Tải về</button></a>
+      <button onclick="confirm('Xoá file ${esc(r.name)}?') && act('DELETE','/api/recordings?path=${encodeURIComponent(r.path)}')">Xoá</button>
+    </div>
+  </div>`;
+}
+
+function play(href) {
+  $('#player').innerHTML = `<video src="${href}" controls autoplay></video>`;
+  $('#player').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function refresh() {
+  try {
+    const [channels, recs] = await Promise.all([api('GET', '/api/channels'), api('GET', '/api/recordings')]);
+    channels.sort((a, b) => (!!b.recording - !!a.recording) || (b.live - a.live) || a.username.localeCompare(b.username));
+    $('#channels').innerHTML = channels.length ? channels.map(channelRow).join('') : '<div class="empty">Chưa có kênh nào. Nhập username ở trên để bắt đầu.</div>';
+    $('#recordings').innerHTML = recs.length ? recs.map(recRow).join('') : '<div class="empty">Chưa có video nào.</div>';
+  } catch {}
+}
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "tiktok-live-auto-recorder",
+  "version": "1.0.0",
+  "description": "Nhập kênh TikTok -> tự động record livestream khi kênh bắt đầu live",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node src/cli.js check"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
