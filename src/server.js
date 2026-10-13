@@ -117,6 +117,15 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`Cổng ${config.port} đang bị dùng (có thể tool đã chạy sẵn). Mở http://localhost:${config.port} hoặc chạy cổng khác: PORT=3001 npm start`);
+  } else {
+    console.error(e);
+  }
+  process.exit(1);
+});
+
 server.listen(config.port, () => {
   console.log(`TikTok Live Recorder: http://localhost:${config.port}`);
   console.log(`Thư mục lưu video: ${config.recordingsDir}`);
